@@ -1,0 +1,24 @@
+# Configuration YOLO pour la détection d'anomalies dentaires
+# EvaDentalAI Project
+
+# Chemins des données
+path: ./data  # Chemin racine du dataset
+train: processed/train/images  # Chemin relatif vers les images d'entraînement
+val: processed/val/images      # Chemin relatif vers les images de validation
+test: processed/test/images    # Chemin relatif vers les images de test
+
+# Classes à détecter
+names:
+  0: tooth      # Dent normale
+  1: cavity     # Carie
+  2: implant    # Implant dentaire
+  3: lesion     # Lésion
+  4: filling    # Plombage
+
+# Nombre de classes
+nc: 5
+
+# Métadonnées
+description: "Dataset de radiographies dentaires pour détection d'anomalies"
+version: "1.0"
+author: "EvaDentalAI Team"

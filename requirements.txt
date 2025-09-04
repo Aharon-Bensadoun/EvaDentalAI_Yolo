@@ -1,0 +1,17 @@
+ultralytics==8.0.196
+fastapi==0.104.1
+uvicorn==0.24.0
+python-multipart==0.0.6
+Pillow>=10.2.0
+opencv-python==4.8.1.78
+numpy==1.24.3
+torch==2.1.0
+torchvision==0.16.0
+matplotlib==3.7.2
+seaborn==0.12.2
+pandas==2.0.3
+requests==2.31.0
+tqdm==4.66.1
+pyyaml==6.0.1
+datasets==2.14.0
+huggingface-hub==0.16.4

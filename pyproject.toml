@@ -1,0 +1,144 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "evadental-ai"
+version = "1.0.0"
+description = "Détection d'anomalies dentaires avec YOLO"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "EvaDentalAI Team", email = "contact@evadental.ai"},
+]
+keywords = ["dental", "yolo", "computer-vision", "medical-imaging", "ai", "machine-learning"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Healthcare Industry",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+]
+dependencies = [
+    "ultralytics>=8.0.0",
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "python-multipart>=0.0.6",
+    "Pillow>=10.1.0",
+    "opencv-python>=4.8.0",
+    "numpy>=1.24.0",
+    "torch>=2.1.0",
+    "torchvision>=0.16.0",
+    "matplotlib>=3.7.0",
+    "seaborn>=0.12.0",
+    "pandas>=2.0.0",
+    "requests>=2.31.0",
+    "tqdm>=4.66.0",
+    "pyyaml>=6.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0",
+    "pytest-cov>=2.0",
+    "black>=21.0",
+    "flake8>=3.8",
+    "mypy>=0.800",
+]
+gpu = [
+    "torch>=1.9.0",
+    "torchvision>=0.10.0",
+]
+
+[project.scripts]
+evadental-prepare = "scripts.prepare_dataset:main"
+evadental-train = "scripts.train_model:main"
+evadental-predict = "scripts.predict:main"
+evadental-export = "scripts.export_model:main"
+evadental-api = "api.main:main"
+evadental-demo = "demo:main"
+
+[project.urls]
+Homepage = "https://github.com/votre-username/EvaDentalAI_Yolo"
+Documentation = "https://github.com/votre-username/EvaDentalAI_Yolo/blob/main/README.md"
+Repository = "https://github.com/votre-username/EvaDentalAI_Yolo"
+"Bug Tracker" = "https://github.com/votre-username/EvaDentalAI_Yolo/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["scripts*", "api*", "config*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.yaml", "*.yml", "*.json", "*.md"]
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+    "--disable-warnings",
+    "--color=yes",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "gpu: marks tests that require GPU",
+    "api: marks tests that require API server",
+    "integration: marks integration tests",
+]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "ultralytics.*",
+    "cv2.*",
+    "matplotlib.*",
+    "seaborn.*",
+    "PIL.*",
+    "fastapi.*",
+    "uvicorn.*",
+]
+ignore_missing_imports = true
