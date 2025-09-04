@@ -52,8 +52,8 @@ class DENTEXDatasetProcessor:
         print(f"Source: {self.dataset_name}")
         
         try:
-            # Charger le dataset
-            dataset = load_dataset(self.dataset_name)
+            # Charger le dataset avec gestion d'erreur pour les patterns
+            dataset = load_dataset(self.dataset_name, trust_remote_code=True)
             print("✅ Dataset téléchargé avec succès!")
             
             # Afficher les informations du dataset
@@ -65,7 +65,16 @@ class DENTEXDatasetProcessor:
             
         except Exception as e:
             print(f"❌ Erreur lors du téléchargement: {e}")
-            return None
+            print("💡 Tentative de téléchargement alternatif...")
+            
+            try:
+                # Tentative alternative avec streaming
+                dataset = load_dataset(self.dataset_name, streaming=True, trust_remote_code=True)
+                print("✅ Dataset téléchargé en mode streaming!")
+                return dataset
+            except Exception as e2:
+                print(f"❌ Erreur alternative: {e2}")
+                return None
     
     def process_dataset(self, dataset, use_full_annotations: bool = True):
         """Traite le dataset DENTEX pour le format YOLO"""

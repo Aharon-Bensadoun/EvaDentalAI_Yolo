@@ -28,12 +28,12 @@ else:
 
 # 3. Cloner le projet
 print("\n📥 Clonage du projet...")
-!git clone https://github.com/votre-username/EvaDentalAI_Yolo.git
+!git clone https://github.com/Aharon-Bensadoun/EvaDentalAI_Yolo.git
 %cd EvaDentalAI_Yolo
 
-# 4. Télécharger DENTEX
+# 4. Télécharger DENTEX (Version Corrigée)
 print("\n📊 Téléchargement DENTEX...")
-!python scripts/download_dentex_dataset.py
+!python scripts/download_dentex_simple.py
 
 # 5. Entraînement
 print("\n🏋️ Entraînement...")
@@ -43,17 +43,40 @@ print("\n🏋️ Entraînement...")
 print("\n🔍 Test du modèle...")
 from ultralytics import YOLO
 import matplotlib.pyplot as plt
+import os
 
 model = YOLO('models/best.pt')
-results = model('data/dentex/test/images/test_0000.jpg')
 
-for r in results:
-    im_array = r.plot()
-    plt.figure(figsize=(12, 8))
-    plt.imshow(im_array)
-    plt.axis('off')
-    plt.title('Détections DENTEX')
-    plt.show()
+# Tester sur une image du dataset
+test_images = [f for f in os.listdir('data/dentex/test/images/') if f.endswith('.jpg')]
+if test_images:
+    test_image = f'data/dentex/test/images/{test_images[0]}'
+    print(f"Test sur: {test_image}")
+    
+    results = model(test_image)
+    
+    for r in results:
+        im_array = r.plot()
+        plt.figure(figsize=(12, 8))
+        plt.imshow(im_array)
+        plt.axis('off')
+        plt.title('Détections DENTEX')
+        plt.show()
+        
+        # Afficher les détections
+        if r.boxes is not None:
+            boxes = r.boxes.xyxy.cpu().numpy()
+            confidences = r.boxes.conf.cpu().numpy()
+            class_ids = r.boxes.cls.cpu().numpy().astype(int)
+            
+            class_names = {0: "tooth", 1: "cavity", 2: "implant", 3: "lesion", 4: "filling"}
+            
+            print(f"\n🎯 Détections trouvées: {len(boxes)}")
+            for i, (box, conf, class_id) in enumerate(zip(boxes, confidences, class_ids)):
+                class_name = class_names.get(class_id, f"class_{class_id}")
+                print(f"  {i+1}. {class_name}: {conf:.3f}")
+        else:
+            print("❌ Aucune détection trouvée")
 
 # 7. Sauvegarde
 print("\n💾 Sauvegarde...")
