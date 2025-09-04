@@ -26,49 +26,75 @@ def fix_colab_environment():
     nested_count = path_parts.count(project_name)
     print(f"📊 Niveau d'imbrication détecté: {nested_count}")
 
+    target_dir = current_dir
+
     if nested_count > 1:
         print("🔍 Structure imbriquée détectée, recherche du répertoire racine...")
 
-        # Trouver le premier (le plus externe) répertoire du projet
+        # Méthode 1: Chercher le répertoire avec les vrais fichiers du projet
         root_candidates = []
         for i, part in enumerate(path_parts):
             if part == project_name:
-                # Construire le chemin jusqu'à ce niveau
                 candidate_path = Path(*path_parts[:i+1])
-                print(f"   Candidat {len(root_candidates)}: {candidate_path}")
                 root_candidates.append(candidate_path)
 
-        if root_candidates:
-            # Prendre le PREMIER (le plus externe) qui contient les fichiers du projet
-            root_dir = None
-            for candidate in root_candidates:
-                if (candidate / 'scripts').exists() and (candidate / 'data').exists():
-                    root_dir = candidate
+        print(f"   Candidats trouvés: {len(root_candidates)}")
+
+        # Chercher le répertoire qui contient réellement les fichiers du projet
+        for candidate in root_candidates:
+            print(f"   Vérification: {candidate}")
+            if (candidate / 'scripts').exists() and (candidate / 'data').exists():
+                print(f"   ✅ Fichiers du projet trouvés dans: {candidate}")
+                target_dir = candidate
+                break
+
+        # Si on n'a pas trouvé, essayer de remonter dans la hiérarchie
+        if target_dir == current_dir:
+            print("   🔄 Recherche alternative: remonter dans la hiérarchie")
+            temp_dir = current_dir
+            for _ in range(min(10, len(path_parts))):  # Maximum 10 niveaux
+                temp_dir = temp_dir.parent
+                if (temp_dir / 'scripts').exists() and (temp_dir / 'data').exists():
+                    print(f"   ✅ Répertoire trouvé en remontant: {temp_dir}")
+                    target_dir = temp_dir
                     break
 
-            # Si aucun candidat valide trouvé, prendre le premier candidat (le plus externe)
-            if root_dir is None and root_candidates:
-                root_dir = root_candidates[0]
+        # Méthode 3: Forcer la navigation vers le premier répertoire du projet
+        if target_dir == current_dir and root_candidates:
+            target_dir = root_candidates[0]
+            print(f"   🎯 Utilisation du premier candidat: {target_dir}")
 
-            print(f"🎯 Répertoire racine sélectionné: {root_dir}")
-
-            if root_dir and str(current_dir) != str(root_dir):
-                print(f"📁 Navigation vers: {root_dir}")
-                os.chdir(root_dir)
-                print("✅ Navigation terminée")
-        else:
-            print("⚠️ Aucun répertoire racine trouvé")
     else:
         print("✅ Structure de répertoire normale détectée")
+
+    # Navigation si nécessaire
+    if str(target_dir) != str(current_dir):
+        print(f"📁 Navigation depuis: {current_dir}")
+        print(f"📁 Navigation vers: {target_dir}")
+        try:
+            os.chdir(target_dir)
+            print("✅ Navigation terminée")
+        except Exception as e:
+            print(f"❌ Erreur de navigation: {e}")
+            return current_dir
+    else:
+        print("✅ Déjà dans le répertoire cible")
 
     final_dir = Path.cwd()
     print(f"🏁 Répertoire final: {final_dir}")
 
-    # Vérifier la structure
+    # Vérification finale
     if (final_dir / 'scripts').exists() and (final_dir / 'data').exists():
         print("✅ Structure de projet valide")
     else:
         print("⚠️ Structure de projet incomplète")
+        print("   Fichiers présents dans le répertoire final:")
+        if final_dir.exists():
+            for item in final_dir.iterdir():
+                if item.is_dir():
+                    print(f"   📁 {item.name}/")
+                else:
+                    print(f"   📄 {item.name}")
 
     return final_dir
 

@@ -16,15 +16,17 @@ def simulate_nested_structure():
 
     # Simuler 5 niveaux d'imbrication
     current = temp_dir
+    root_project = None
     for i in range(5):
         current = current / "EvaDentalAI_Yolo"
         current.mkdir(exist_ok=True)
 
-        # Ajouter les répertoires du projet au dernier niveau
-        if i == 4:  # Dernier niveau
+        # Ajouter les répertoires du projet au PREMIER niveau (réaliste)
+        if i == 0:  # Premier niveau - c'est là que seraient les vrais fichiers
             (current / "scripts").mkdir()
             (current / "data").mkdir()
             (current / "models").mkdir()
+            root_project = current
 
     print(f"📍 Structure créée. Répertoire le plus profond: {current}")
     return temp_dir, current
@@ -55,11 +57,14 @@ def test_fix_function():
         result = fix_colab_environment()
 
         # Vérifier le résultat
+        # Le répertoire attendu est celui qui contient les fichiers du projet (premier niveau)
         expected_root = temp_dir / "EvaDentalAI_Yolo"
         if str(result) == str(expected_root):
             print("✅ SUCCÈS: Navigation vers le répertoire racine correcte")
+            print(f"   Répertoire avec fichiers du projet: {expected_root}")
         else:
             print(f"❌ ÉCHEC: Attendu {expected_root}, obtenu {result}")
+            print("   Cela indique que la logique de sélection doit être ajustée")
 
         # Restaurer le répertoire original
         os.chdir(original_cwd)
