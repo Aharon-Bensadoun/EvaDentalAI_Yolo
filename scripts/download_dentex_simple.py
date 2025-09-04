@@ -11,12 +11,38 @@ from pathlib import Path
 import yaml
 import sys
 
+def fix_colab_environment():
+    """Corrige l'environnement Colab pour éviter les problèmes de chemins"""
+    print("🔧 Correction de l'environnement...")
+
+    # Détecter si on est dans un environnement avec des répertoires imbriqués
+    current_dir = Path.cwd()
+    project_dirs = ['EvaDentalAI_Yolo', 'scripts', 'data', 'models']
+
+    # Chercher le vrai répertoire racine du projet
+    root_dir = current_dir
+    for parent in current_dir.parents:
+        if any((parent / d).exists() for d in project_dirs):
+            root_dir = parent
+            break
+
+    # Si on est dans un sous-répertoire imbriqué, aller à la racine
+    if str(current_dir) != str(root_dir):
+        print(f"📁 Changement vers le répertoire racine: {root_dir}")
+        os.chdir(root_dir)
+
+    print(f"✅ Environnement corrigé. Répertoire actuel: {Path.cwd()}")
+    return Path.cwd()
+
 def download_dentex_simple():
     """Téléchargement simplifié du dataset DENTEX"""
-    
+
     print("🦷 Téléchargement DENTEX - Version Simplifiée")
     print("=" * 50)
-    
+
+    # Corriger l'environnement Colab en premier
+    fix_colab_environment()
+
     try:
         from datasets import load_dataset
         from PIL import Image
@@ -105,10 +131,18 @@ def download_dentex_simple():
 
         print("\n✅ Dataset DENTEX préparé avec succès!")
         print("📁 Structure créée:")
-        print("   data/dentex/train/")
-        print("   data/dentex/val/")
-        print("   data/dentex/test/")
-        print("   data/dentex/data.yaml")
+        abs_path = Path.cwd() / output_dir
+        print(f"   {abs_path}/train/")
+        print(f"   {abs_path}/val/")
+        print(f"   {abs_path}/test/")
+        print(f"   {abs_path}/data.yaml")
+
+        # Vérifier que le fichier de configuration existe
+        config_file = abs_path / 'data.yaml'
+        if config_file.exists():
+            print("✅ Fichier de configuration créé avec succès")
+        else:
+            print("⚠️  Fichier de configuration non trouvé")
 
         return True
 
@@ -191,11 +225,12 @@ def map_diagnosis_class(obj):
     return None
 
 def create_yolo_config(output_dir, processed_counts):
-    """Crée le fichier de configuration YOLO pour DENTEX"""
-    config_path = output_dir / 'data.yaml'
-    
+    """Crée le fichier de configuration YOLO pour DENTEX avec chemins absolus"""
+    # Utiliser des chemins absolus pour éviter les problèmes de répertoires
+    abs_path = Path.cwd() / output_dir
+
     config = {
-        'path': str(output_dir),
+        'path': str(abs_path),  # Chemin absolu vers le répertoire dataset
         'train': 'train/images',
         'val': 'val/images',
         'test': 'test/images',
@@ -212,11 +247,16 @@ def create_yolo_config(output_dir, processed_counts):
         'license': 'CC-BY-NC-SA-4.0',
         'version': '1.0'
     }
-    
+
+    config_path = abs_path / 'data.yaml'
     with open(config_path, 'w') as f:
         yaml.dump(config, f, default_flow_style=False)
-    
+
     print(f"✅ Configuration YOLO créée: {config_path}")
+    print(f"📁 Chemins utilisés:")
+    print(f"   Train: {abs_path}/train/images")
+    print(f"   Val: {abs_path}/val/images")
+    print(f"   Test: {abs_path}/test/images")
 
 def create_test_dataset(output_dir):
     """Crée un dataset de test minimal si le téléchargement échoue"""
@@ -247,6 +287,9 @@ if __name__ == "__main__":
     success = download_dentex_simple()
     if success:
         print("\n🚀 Utilisation:")
-        print("   python scripts/train_model.py --config data/dentex/data.yaml")
+        abs_config = Path.cwd() / "data" / "dentex" / "data.yaml"
+        print(f"   python scripts/train_model.py --config {abs_config}")
+        print("   ou depuis Colab:")
+        print(f"   !python scripts/train_model.py --config {abs_config}")
     else:
         print("\n❌ Échec du téléchargement")

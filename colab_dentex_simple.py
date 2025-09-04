@@ -30,7 +30,21 @@ def fix_colab_environment():
         print(f"Changement vers le repertoire racine: {root_dir}")
         os.chdir(root_dir)
 
+    # Verifier et creer les repertoires necessaires
+    data_dir = Path("data/dentex")
+    models_dir = Path("models")
+
+    for split in ['train', 'val', 'test']:
+        (data_dir / split / 'images').mkdir(parents=True, exist_ok=True)
+        (data_dir / split / 'labels').mkdir(parents=True, exist_ok=True)
+
+    models_dir.mkdir(exist_ok=True)
+
     print(f"Environnement corrige. Repertoire actuel: {Path.cwd()}")
+    print(f"Chemins verifies:")
+    print(f"  Data: {data_dir.absolute()}")
+    print(f"  Models: {models_dir.absolute()}")
+
     return Path.cwd()
 
 def install_dependencies():
@@ -195,9 +209,12 @@ def map_dentex_class(obj):
     return None
 
 def create_dentex_config(output_dir, processed_counts):
-    """Cree la configuration YOLO pour DENTEX"""
+    """Cree la configuration YOLO pour DENTEX avec chemins absolus"""
+    # Utiliser des chemins absolus pour eviter les problemes de repertoires
+    abs_path = Path.cwd() / output_dir
+
     config = {
-        'path': str(output_dir),
+        'path': str(abs_path),  # Chemin absolu vers le repertoire dataset
         'train': 'train/images',
         'val': 'val/images',
         'test': 'test/images',
@@ -212,11 +229,15 @@ def create_dentex_config(output_dir, processed_counts):
         'description': 'DENTEX Dataset - Panoramic Dental X-rays'
     }
 
-    config_path = output_dir / 'data.yaml'
+    config_path = abs_path / 'data.yaml'
     with open(config_path, 'w') as f:
         yaml.dump(config, f, default_flow_style=False)
 
     print(f"Configuration creee: {config_path}")
+    print(f"Chemins utilises:")
+    print(f"  Train: {abs_path}/train/images")
+    print(f"  Val: {abs_path}/val/images")
+    print(f"  Test: {abs_path}/test/images")
 
 def create_test_dataset_fixed(output_dir):
     """Cree un dataset de test minimal"""
@@ -268,8 +289,11 @@ def train_model_fixed(device):
             print("Modele charge avec succes!")
 
             # Configuration d'entrainement optimisee pour Colab
+            # Utiliser le chemin absolu pour le fichier de configuration
+            config_path = Path.cwd() / 'data' / 'dentex' / 'data.yaml'
+
             train_args = {
-                'data': 'data/dentex/data.yaml',
+                'data': str(config_path.absolute()),
                 'epochs': 10,  # Reduit pour les tests
                 'batch': 8,     # Petit batch pour la memoire
                 'imgsz': 640,
@@ -289,6 +313,12 @@ def train_model_fixed(device):
                 'seed': 42,
                 'deterministic': False,
             }
+
+            print(f"Configuration utilisee: {config_path.absolute()}")
+            if not config_path.exists():
+                print(f"⚠️  Fichier de configuration non trouve: {config_path}")
+                print("Creation automatique...")
+                create_test_dataset_fixed(Path('data/dentex'))
 
             print("Debut de l'entrainement...")
             results = model.train(**train_args)
@@ -319,8 +349,11 @@ def train_fallback(device):
         try:
             model = YOLO('yolov8n.pt')  # Modele plus petit
 
+            # Utiliser le chemin absolu pour le fichier de configuration
+            config_path = Path.cwd() / 'data' / 'dentex' / 'data.yaml'
+
             train_args = {
-                'data': 'data/dentex/data.yaml',
+                'data': str(config_path.absolute()),
                 'epochs': 5,
                 'batch': 4,
                 'imgsz': 416,  # Plus petit pour la memoire
@@ -351,30 +384,33 @@ def train_fallback(device):
         return None
 
 def test_model():
-    """Test du modele entraine avec gestion d'erreurs"""
+    """Test du modele entraine avec gestion d'erreurs amelioree"""
     print("Test du modele...")
 
     try:
         from ultralytics import YOLO
-        import matplotlib.pyplot as plt
 
         # Chercher le meilleur modele
         models_dir = Path("models")
         best_model = None
 
         if models_dir.exists():
-            for subdir in models_dir.iterdir():
-                if subdir.is_dir():
-                    weights_dir = subdir / "weights"
-                    if weights_dir.exists():
-                        best_pt = weights_dir / "best.pt"
-                        if best_pt.exists():
-                            best_model = best_pt
-                            break
+            # Trier par date de modification (le plus recent en premier)
+            subdirs = sorted([d for d in models_dir.iterdir() if d.is_dir()],
+                           key=lambda x: x.stat().st_mtime, reverse=True)
+
+            for subdir in subdirs:
+                weights_dir = subdir / "weights"
+                if weights_dir.exists():
+                    best_pt = weights_dir / "best.pt"
+                    if best_pt.exists():
+                        best_model = best_pt
+                        print(f"Modele trouve: {best_model}")
+                        break
 
         if not best_model:
-            print("Aucun modele trouve dans models/")
-            print("Creation d'un test simple avec yolov8n.pt...")
+            print("Aucun modele entraine trouve dans models/")
+            print("Test avec le modele pre-entraine yolov8n.pt...")
 
             # Patch pour le test
             original_torch_load = torch.load
@@ -382,39 +418,41 @@ def test_model():
 
             try:
                 model = YOLO('yolov8n.pt')
-                print("Test avec modele pre-entraine yolov8n.pt")
+                print("Test avec yolov8n.pt (modele pre-entraine)")
 
                 # Tester sur des images du dataset si disponible
                 test_dir = Path("data/dentex/test/images")
-                if test_dir.exists() and list(test_dir.glob("*.jpg")):
+                if test_dir.exists():
                     test_images = list(test_dir.glob("*.jpg"))
-                    test_image = str(test_images[0])
-                    print(f"Test sur: {test_image}")
+                    if test_images:
+                        test_image = str(test_images[0])
+                        print(f"Test sur: {Path(test_image).name}")
 
-                    results = model(test_image)
+                        results = model(test_image, conf=0.25, iou=0.5)
 
-                    for r in results:
-                        if r.boxes is not None:
-                            boxes = r.boxes.xyxy.cpu().numpy()
-                            confidences = r.boxes.conf.cpu().numpy()
-                            class_ids = r.boxes.cls.cpu().numpy().astype(int)
+                        if results and results[0].boxes is not None:
+                            boxes = results[0].boxes.xyxy.cpu().numpy()
+                            confidences = results[0].boxes.conf.cpu().numpy()
+                            class_ids = results[0].boxes.cls.cpu().numpy().astype(int)
 
                             print(f"Detections trouvees: {len(boxes)}")
                             for i, (box, conf, class_id) in enumerate(zip(boxes, confidences, class_ids)):
-                                print(f"  {i+1}. Classe {class_id}: {conf:.3f}")
+                                print(".3f")
                         else:
-                            print("Aucune detection trouvee")
+                            print("Aucune detection trouvee avec yolov8n.pt")
+                    else:
+                        print("Aucune image de test disponible")
                 else:
-                    print("Aucune image de test trouvee")
+                    print("Repertoire de test non trouve")
 
             finally:
                 torch.load = original_torch_load
 
             return
 
-        print(f"Utilisation du modele: {best_model}")
+        print(f"Test du modele entraine: {best_model}")
 
-        # Patch pour le test aussi
+        # Patch pour le test du modele entraine
         original_torch_load = torch.load
         torch.load = lambda *args, **kwargs: original_torch_load(*args, weights_only=False, **kwargs)
 
@@ -427,31 +465,34 @@ def test_model():
                 test_images = list(test_dir.glob("*.jpg"))
                 if test_images:
                     test_image = str(test_images[0])
-                    print(f"Test sur: {test_image}")
+                    print(f"Test sur: {Path(test_image).name}")
 
-                    results = model(test_image)
+                    results = model(test_image, conf=0.25, iou=0.5)
 
-                    for r in results:
-                        if r.boxes is not None:
-                            boxes = r.boxes.xyxy.cpu().numpy()
-                            confidences = r.boxes.conf.cpu().numpy()
-                            class_ids = r.boxes.cls.cpu().numpy().astype(int)
+                    if results and results[0].boxes is not None:
+                        boxes = results[0].boxes.xyxy.cpu().numpy()
+                        confidences = results[0].boxes.conf.cpu().numpy()
+                        class_ids = results[0].boxes.cls.cpu().numpy().astype(int)
 
-                            class_names = {0: "tooth", 1: "cavity", 2: "implant", 3: "lesion", 4: "filling"}
+                        class_names = {0: "tooth", 1: "cavity", 2: "implant", 3: "lesion", 4: "filling"}
 
-                            print(f"\nDetections trouvees: {len(boxes)}")
-                            for i, (box, conf, class_id) in enumerate(zip(boxes, confidences, class_ids)):
-                                class_name = class_names.get(class_id, f"class_{class_id}")
-                                print(f"  {i+1}. {class_name}: {conf:.3f}")
-                        else:
-                            print("Aucune detection trouvee")
+                        print(f"Detections trouvees: {len(boxes)}")
+                        for i, (box, conf, class_id) in enumerate(zip(boxes, confidences, class_ids)):
+                            class_name = class_names.get(class_id, f"class_{class_id}")
+                            print(".3f")
+                    else:
+                        print("Aucune detection trouvee avec le modele entraine")
+                else:
+                    print("Aucune image de test disponible")
+            else:
+                print("Repertoire de test non trouve")
 
         finally:
             torch.load = original_torch_load
 
     except Exception as e:
-        print(f"Erreur test: {e}")
-        print("Le test a echoue, mais cela n'affecte pas l'entrainement principal")
+        print(f"Erreur lors du test: {e}")
+        print("Le test a echoue, mais l'entrainement peut avoir reussi")
 
 def save_to_drive():
     """Sauvegarde sur Google Drive"""
