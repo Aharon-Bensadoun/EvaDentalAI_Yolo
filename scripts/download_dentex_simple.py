@@ -15,24 +15,62 @@ def fix_colab_environment():
     """Corrige l'environnement Colab pour éviter les problèmes de chemins"""
     print("🔧 Correction de l'environnement...")
 
-    # Détecter si on est dans un environnement avec des répertoires imbriqués
     current_dir = Path.cwd()
-    project_dirs = ['EvaDentalAI_Yolo', 'scripts', 'data', 'models']
+    print(f"📍 Répertoire actuel: {current_dir}")
 
-    # Chercher le vrai répertoire racine du projet
-    root_dir = current_dir
-    for parent in current_dir.parents:
-        if any((parent / d).exists() for d in project_dirs):
-            root_dir = parent
-            break
+    # Vérifier si on est dans une structure imbriquée
+    path_parts = current_dir.parts
+    project_name = 'EvaDentalAI_Yolo'
 
-    # Si on est dans un sous-répertoire imbriqué, aller à la racine
-    if str(current_dir) != str(root_dir):
-        print(f"📁 Changement vers le répertoire racine: {root_dir}")
-        os.chdir(root_dir)
+    # Compter combien de fois le projet apparaît dans le chemin
+    nested_count = path_parts.count(project_name)
+    print(f"📊 Niveau d'imbrication détecté: {nested_count}")
 
-    print(f"✅ Environnement corrigé. Répertoire actuel: {Path.cwd()}")
-    return Path.cwd()
+    if nested_count > 1:
+        print("🔍 Structure imbriquée détectée, recherche du répertoire racine...")
+
+        # Trouver le premier (le plus externe) répertoire du projet
+        root_candidates = []
+        for i, part in enumerate(path_parts):
+            if part == project_name:
+                # Construire le chemin jusqu'à ce niveau
+                candidate_path = Path(*path_parts[:i+1])
+                print(f"   Candidat {len(root_candidates)}: {candidate_path}")
+                root_candidates.append(candidate_path)
+
+        if root_candidates:
+            # Prendre le PREMIER (le plus externe) qui contient les fichiers du projet
+            root_dir = None
+            for candidate in root_candidates:
+                if (candidate / 'scripts').exists() and (candidate / 'data').exists():
+                    root_dir = candidate
+                    break
+
+            # Si aucun candidat valide trouvé, prendre le premier candidat (le plus externe)
+            if root_dir is None and root_candidates:
+                root_dir = root_candidates[0]
+
+            print(f"🎯 Répertoire racine sélectionné: {root_dir}")
+
+            if root_dir and str(current_dir) != str(root_dir):
+                print(f"📁 Navigation vers: {root_dir}")
+                os.chdir(root_dir)
+                print("✅ Navigation terminée")
+        else:
+            print("⚠️ Aucun répertoire racine trouvé")
+    else:
+        print("✅ Structure de répertoire normale détectée")
+
+    final_dir = Path.cwd()
+    print(f"🏁 Répertoire final: {final_dir}")
+
+    # Vérifier la structure
+    if (final_dir / 'scripts').exists() and (final_dir / 'data').exists():
+        print("✅ Structure de projet valide")
+    else:
+        print("⚠️ Structure de projet incomplète")
+
+    return final_dir
 
 def download_dentex_simple():
     """Téléchargement simplifié du dataset DENTEX"""
