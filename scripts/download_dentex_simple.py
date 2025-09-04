@@ -105,7 +105,16 @@ def download_dentex_simple():
     print("=" * 50)
 
     # Corriger l'environnement Colab en premier
-    fix_colab_environment()
+    print("🔧 Correction de l'environnement Colab...")
+    fixed_dir = fix_colab_environment()
+    print(f"✅ Environnement corrigé: {fixed_dir}")
+
+    # Vérifier que nous sommes dans le bon répertoire
+    if not ((fixed_dir / 'scripts').exists() and (fixed_dir / 'data').exists()):
+        print("⚠️ AVERTISSEMENT: Structure de projet incomplète détectée")
+        print("   Cela peut causer des problèmes avec les chemins")
+        print("   Essayez d'exécuter: exec(open('fix_colab_paths.py').read())")
+        return False
 
     try:
         from datasets import load_dataset
