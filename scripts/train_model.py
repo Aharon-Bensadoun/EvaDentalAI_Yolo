@@ -15,6 +15,27 @@ import seaborn as sns
 from datetime import datetime
 import json
 
+# Fix for PyTorch 2.6+ serialization issue
+def safe_torch_load(file_path, map_location=None):
+    """Safe torch.load with PyTorch 2.6+ compatibility"""
+    try:
+        # Try with weights_only=True (PyTorch 2.6+ default)
+        return torch.load(file_path, map_location=map_location, weights_only=True)
+    except Exception as e:
+        if "Unsupported global" in str(e):
+            # Fallback for PyTorch 2.6+ with safe globals
+            try:
+                import ultralytics.nn.tasks
+                with torch.serialization.safe_globals([ultralytics.nn.tasks.DetectionModel]):
+                    return torch.load(file_path, map_location=map_location, weights_only=True)
+            except Exception:
+                # Final fallback - use weights_only=False (less secure but compatible)
+                print("⚠️  Using legacy torch.load (weights_only=False) for compatibility")
+                return torch.load(file_path, map_location=map_location, weights_only=False)
+        else:
+            # Re-raise other exceptions
+            raise
+
 class DentalYOLOTrainer:
     """Classe pour l'entraînement du modèle YOLO dentaire"""
     
@@ -26,16 +47,46 @@ class DentalYOLOTrainer:
     def setup_model(self, model_size: str = "yolov8n.pt", pretrained: bool = True):
         """Initialise le modèle YOLO"""
         print(f"🔧 Initialisation du modèle {model_size}")
-        
-        if pretrained:
-            # Charger un modèle pré-entraîné
-            self.model = YOLO(model_size)
-            print(f"✅ Modèle pré-entraîné chargé: {model_size}")
-        else:
-            # Créer un nouveau modèle
-            self.model = YOLO(f"{model_size}.yaml")
-            print(f"✅ Nouveau modèle créé: {model_size}")
-            
+
+        try:
+            if pretrained:
+                # Charger un modèle pré-entraîné avec gestion d'erreurs PyTorch 2.6+
+                print("📥 Téléchargement et chargement du modèle pré-entraîné...")
+                self.model = YOLO(model_size)
+                print(f"✅ Modèle pré-entraîné chargé: {model_size}")
+            else:
+                # Créer un nouveau modèle
+                self.model = YOLO(f"{model_size}.yaml")
+                print(f"✅ Nouveau modèle créé: {model_size}")
+
+        except Exception as e:
+            if "Weights only load failed" in str(e) or "Unsupported global" in str(e):
+                print(f"⚠️  Erreur de sérialisation PyTorch détectée: {e}")
+                print("🔄 Tentative de contournement...")
+
+                # Essayer de patcher temporairement torch.load
+                original_torch_load = torch.load
+
+                def patched_torch_load(*args, **kwargs):
+                    # Forcer weights_only=False pour la compatibilité
+                    kwargs['weights_only'] = False
+                    return original_torch_load(*args, **kwargs)
+
+                torch.load = patched_torch_load
+
+                try:
+                    if pretrained:
+                        self.model = YOLO(model_size)
+                        print(f"✅ Modèle chargé avec contournement: {model_size}")
+                    else:
+                        self.model = YOLO(f"{model_size}.yaml")
+                        print(f"✅ Nouveau modèle créé avec contournement: {model_size}")
+                finally:
+                    # Restaurer torch.load original
+                    torch.load = original_torch_load
+            else:
+                raise e
+
         return self.model
     
     def train(self, 

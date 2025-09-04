@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Script complet et corrige pour EvaDentalAI + DENTEX sur Google Colab
-Version fixee pour gerer les erreurs de PyTorch 2.6+ et les problemes de chemins
+Script complet et corrigé pour EvaDentalAI + DENTEX sur Google Colab
+Version fixée pour gérer les erreurs de PyTorch 2.6+ et les problèmes de chemins
 """
 
 import os
@@ -11,57 +11,57 @@ import shutil
 from pathlib import Path
 
 def fix_colab_environment():
-    """Corrige l'environnement Colab pour eviter les problemes de chemins"""
-    print("Correction de l'environnement Colab...")
+    """Corrige l'environnement Colab pour éviter les problèmes de chemins"""
+    print("🔧 Correction de l'environnement Colab...")
 
-    # Detecter si on est dans un environnement avec des repertoires imbriques
+    # Détecter si on est dans un environnement avec des répertoires imbriqués
     current_dir = Path.cwd()
     project_dirs = ['EvaDentalAI_Yolo', 'scripts', 'data', 'models']
 
-    # Chercher le vrai repertoire racine du projet
+    # Chercher le vrai répertoire racine du projet
     root_dir = current_dir
     for parent in current_dir.parents:
         if any((parent / d).exists() for d in project_dirs):
             root_dir = parent
             break
 
-    # Si on est dans un sous-repertoire imbrique, aller a la racine
+    # Si on est dans un sous-répertoire imbriqué, aller à la racine
     if str(current_dir) != str(root_dir):
-        print(f"Changement vers le repertoire racine: {root_dir}")
+        print(f"📁 Changement vers le répertoire racine: {root_dir}")
         os.chdir(root_dir)
 
-    print(f"Environnement corrige. Repertoire actuel: {Path.cwd()}")
+    print(f"✅ Environnement corrigé. Répertoire actuel: {Path.cwd()}")
     return Path.cwd()
 
 def install_dependencies():
-    """Installe les dependances necessaires"""
-    print("Installation des dependances...")
+    """Installe les dépendances nécessaires"""
+    print("📦 Installation des dépendances...")
 
     try:
         import ultralytics
-        print("Ultralytics deja installe")
+        print("✅ Ultralytics déjà installé")
     except ImportError:
         os.system("pip install ultralytics==8.0.196")
 
     try:
         import datasets
-        print("Datasets deja installe")
+        print("✅ Datasets déjà installé")
     except ImportError:
         os.system("pip install datasets==2.14.0 huggingface-hub==0.16.4")
 
-    # Verifier PyTorch
+    # Vérifier PyTorch
     if torch.cuda.is_available():
-        print(f"GPU disponible: {torch.cuda.get_device_name(0)}")
+        print(f"✅ GPU disponible: {torch.cuda.get_device_name(0)}")
         device = "cuda"
     else:
-        print("GPU non disponible, utilisation du CPU")
+        print("⚠️  GPU non disponible, utilisation du CPU")
         device = "cpu"
 
     return device
 
 def download_dentex_fixed():
-    """Telechargement du dataset DENTEX avec gestion d'erreurs amelioree"""
-    print("Telechargement DENTEX - Version Corrigee")
+    """Téléchargement du dataset DENTEX avec gestion d'erreurs améliorée"""
+    print("🦷 Téléchargement DENTEX - Version Corrigée")
     print("=" * 50)
 
     try:
@@ -70,43 +70,43 @@ def download_dentex_fixed():
         import numpy as np
         import yaml
     except ImportError:
-        print("Dependances manquantes")
+        print("❌ Dépendances manquantes")
         return False
 
-    # Creer la structure des repertoires
+    # Créer la structure des répertoires
     output_dir = Path("data/dentex")
     try:
         for split in ['train', 'val', 'test']:
             (output_dir / split / 'images').mkdir(parents=True, exist_ok=True)
             (output_dir / split / 'labels').mkdir(parents=True, exist_ok=True)
     except Exception as e:
-        print(f"Erreur repertoire: {e}")
+        print(f"❌ Erreur répertoire: {e}")
         return False
 
-    print("Telechargement du dataset DENTEX...")
+    print("📥 Téléchargement du dataset DENTEX...")
     print("Source: https://huggingface.co/datasets/ibrahimhamamci/DENTEX")
 
     try:
-        # Methode 1: Telechargement standard avec gestion d'erreurs
+        # Méthode 1: Téléchargement standard avec gestion d'erreurs
         dataset = load_dataset("ibrahimhamamci/DENTEX",
                               trust_remote_code=True,
                               download_mode="reuse_cache_if_exists")
-        print("Dataset telecharge avec succes!")
+        print("✅ Dataset téléchargé avec succès!")
 
         # Traiter le dataset
         processed_counts = process_dentex_dataset(dataset, output_dir)
 
-        # Creer la configuration
+        # Créer la configuration
         create_dentex_config(output_dir, processed_counts)
 
-        print("\nDataset DENTEX prepare avec succes!")
+        print("\n✅ Dataset DENTEX préparé avec succès!")
         return True
 
     except Exception as e:
-        print(f"Erreur telechargement: {e}")
-        print("Creation d'un dataset de test...")
+        print(f"❌ Erreur téléchargement: {e}")
+        print("💡 Création d'un dataset de test...")
 
-        # Creer un dataset de test minimal
+        # Créer un dataset de test minimal
         create_test_dataset_fixed(output_dir)
         return True
 
@@ -119,7 +119,7 @@ def process_dentex_dataset(dataset, output_dir):
             continue
 
         yolo_split = 'val' if split_name == 'validation' else split_name
-        print(f"Traitement du split: {split_name} -> {yolo_split}")
+        print(f"📁 Traitement du split: {split_name} -> {yolo_split}")
 
         processed_count = 0
 
@@ -143,14 +143,14 @@ def process_dentex_dataset(dataset, output_dir):
                 processed_count += 1
 
                 if (i + 1) % 100 == 0:
-                    print(f"  Traite {i + 1}/{len(split_data)} images")
+                    print(f"  Traité {i + 1}/{len(split_data)} images")
 
             except Exception as e:
-                print(f"  Erreur image {i}: {e}")
+                print(f"  ⚠️  Erreur image {i}: {e}")
                 continue
 
         processed_counts[yolo_split] = processed_count
-        print(f"{yolo_split}: {processed_count} images traitees")
+        print(f"✅ {yolo_split}: {processed_count} images traitées")
 
     return processed_counts
 
@@ -195,7 +195,7 @@ def map_dentex_class(obj):
     return None
 
 def create_dentex_config(output_dir, processed_counts):
-    """Cree la configuration YOLO pour DENTEX"""
+    """Crée la configuration YOLO pour DENTEX"""
     config = {
         'path': str(output_dir),
         'train': 'train/images',
@@ -216,11 +216,11 @@ def create_dentex_config(output_dir, processed_counts):
     with open(config_path, 'w') as f:
         yaml.dump(config, f, default_flow_style=False)
 
-    print(f"Configuration creee: {config_path}")
+    print(f"✅ Configuration créée: {config_path}")
 
 def create_test_dataset_fixed(output_dir):
-    """Cree un dataset de test minimal"""
-    print("Creation d'un dataset de test...")
+    """Crée un dataset de test minimal"""
+    print("🔧 Création d'un dataset de test...")
 
     from PIL import Image
     import yaml
@@ -231,20 +231,20 @@ def create_test_dataset_fixed(output_dir):
             img_path = output_dir / split / 'images' / f"{split}_{i:04d}.jpg"
             img.save(img_path)
 
-            # Creer des labels varies pour le test
+            # Créer des labels variés pour le test
             label_path = output_dir / split / 'labels' / f"{split}_{i:04d}.txt"
             with open(label_path, 'w') as f:
-                # Ajouter differentes classes pour le test
+                # Ajouter différentes classes pour le test
                 classes = [0, 1, 3, 4]  # tooth, cavity, lesion, filling
                 for cls in classes:
                     f.write(f"{cls} {0.1 + cls*0.2:.1f} {0.1 + cls*0.2:.1f} 0.1 0.1\n")
 
     create_dentex_config(output_dir, {'train': 10, 'val': 10, 'test': 10})
-    print("Dataset de test cree!")
+    print("✅ Dataset de test créé!")
 
 def train_model_fixed(device):
-    """Entrainement du modele avec gestion des erreurs PyTorch 2.6+"""
-    print("Entrainement du modele...")
+    """Entraînement du modèle avec gestion des erreurs PyTorch 2.6+"""
+    print("🏋️ Entraînement du modèle...")
     print("=" * 50)
 
     try:
@@ -262,16 +262,16 @@ def train_model_fixed(device):
         torch.load = patched_torch_load
 
         try:
-            # Charger le modele avec le patch
-            print("Chargement du modele yolov8s.pt...")
+            # Charger le modèle avec le patch
+            print("🔧 Chargement du modèle yolov8s.pt...")
             model = YOLO('yolov8s.pt')
-            print("Modele charge avec succes!")
+            print("✅ Modèle chargé avec succès!")
 
-            # Configuration d'entrainement optimisee pour Colab
+            # Configuration d'entraînement optimisée pour Colab
             train_args = {
                 'data': 'data/dentex/data.yaml',
-                'epochs': 10,  # Reduit pour les tests
-                'batch': 8,     # Petit batch pour la memoire
+                'epochs': 10,  # Réduit pour les tests
+                'batch': 8,     # Petit batch pour la mémoire
                 'imgsz': 640,
                 'device': device,
                 'patience': 20,
@@ -283,11 +283,11 @@ def train_model_fixed(device):
                 'verbose': True
             }
 
-            print("Debut de l'entrainement...")
+            print("🚀 Début de l'entraînement...")
             results = model.train(**train_args)
 
-            print("Entrainement termine!")
-            print(f"Modele sauvegarde dans: {results.save_dir}")
+            print("✅ Entraînement terminé!")
+            print(f"📁 Modèle sauvegardé dans: {results.save_dir}")
 
             return results
 
@@ -296,12 +296,12 @@ def train_model_fixed(device):
             torch.load = original_torch_load
 
     except Exception as e:
-        print(f"Erreur entrainement: {e}")
-        print("Tentative avec un modele plus petit...")
+        print(f"❌ Erreur entraînement: {e}")
+        print("💡 Tentative avec un modèle plus petit...")
         return train_fallback(device)
 
 def train_fallback(device):
-    """Entrainement de secours avec yolov8n.pt"""
+    """Entraînement de secours avec yolov8n.pt"""
     try:
         from ultralytics import YOLO
 
@@ -310,13 +310,13 @@ def train_fallback(device):
         torch.load = lambda *args, **kwargs: original_torch_load(*args, weights_only=False, **kwargs)
 
         try:
-            model = YOLO('yolov8n.pt')  # Modele plus petit
+            model = YOLO('yolov8n.pt')  # Modèle plus petit
 
             train_args = {
                 'data': 'data/dentex/data.yaml',
                 'epochs': 5,
                 'batch': 4,
-                'imgsz': 416,  # Plus petit pour la memoire
+                'imgsz': 416,  # Plus petit pour la mémoire
                 'device': device,
                 'project': 'models',
                 'name': 'dentex_fallback',
@@ -325,7 +325,7 @@ def train_fallback(device):
             }
 
             results = model.train(**train_args)
-            print("Entrainement de secours reussi!")
+            print("✅ Entraînement de secours réussi!")
 
             return results
 
@@ -333,18 +333,18 @@ def train_fallback(device):
             torch.load = original_torch_load
 
     except Exception as e:
-        print(f"Echec entrainement de secours: {e}")
+        print(f"❌ Échec entraînement de secours: {e}")
         return None
 
 def test_model():
-    """Test du modele entraine"""
-    print("Test du modele...")
+    """Test du modèle entraîné"""
+    print("🔍 Test du modèle...")
 
     try:
         from ultralytics import YOLO
         import matplotlib.pyplot as plt
 
-        # Chercher le meilleur modele
+        # Chercher le meilleur modèle
         models_dir = Path("models")
         best_model = None
 
@@ -358,10 +358,10 @@ def test_model():
                         break
 
         if not best_model:
-            print("Aucun modele trouve dans models/")
+            print("❌ Aucun modèle trouvé dans models/")
             return
 
-        print(f"Utilisation du modele: {best_model}")
+        print(f"📁 Utilisation du modèle: {best_model}")
 
         # Patch pour le test aussi
         original_torch_load = torch.load
@@ -376,7 +376,7 @@ def test_model():
                 test_images = list(test_dir.glob("*.jpg"))
                 if test_images:
                     test_image = str(test_images[0])
-                    print(f"Test sur: {test_image}")
+                    print(f"🖼️  Test sur: {test_image}")
 
                     results = model(test_image)
 
@@ -385,7 +385,7 @@ def test_model():
                         plt.figure(figsize=(12, 8))
                         plt.imshow(im_array)
                         plt.axis('off')
-                        plt.title('Detections DENTEX')
+                        plt.title('Détections DENTEX')
                         plt.show()
 
                         if r.boxes is not None:
@@ -395,22 +395,22 @@ def test_model():
 
                             class_names = {0: "tooth", 1: "cavity", 2: "implant", 3: "lesion", 4: "filling"}
 
-                            print(f"\nDetections trouvees: {len(boxes)}")
+                            print(f"\n🎯 Détections trouvées: {len(boxes)}")
                             for i, (box, conf, class_id) in enumerate(zip(boxes, confidences, class_ids)):
                                 class_name = class_names.get(class_id, f"class_{class_id}")
                                 print(f"  {i+1}. {class_name}: {conf:.3f}")
                         else:
-                            print("Aucune detection trouvee")
+                            print("❌ Aucune détection trouvée")
 
         finally:
             torch.load = original_torch_load
 
     except Exception as e:
-        print(f"Erreur test: {e}")
+        print(f"❌ Erreur test: {e}")
 
 def save_to_drive():
     """Sauvegarde sur Google Drive"""
-    print("Sauvegarde sur Google Drive...")
+    print("💾 Sauvegarde sur Google Drive...")
 
     try:
         from google.colab import drive
@@ -419,42 +419,42 @@ def save_to_drive():
         models_dir = Path("models")
         if models_dir.exists():
             shutil.copytree('models/', '/content/drive/MyDrive/EvaDentalAI_Models/', dirs_exist_ok=True)
-            print("Sauvegarde sur Google Drive!")
+            print("✅ Sauvegardé sur Google Drive!")
         else:
-            print("Aucun repertoire models a sauvegarder")
+            print("⚠️  Aucun répertoire models à sauvegarder")
 
     except Exception as e:
-        print(f"Erreur sauvegarde: {e}")
+        print(f"❌ Erreur sauvegarde: {e}")
 
 def run_dentex_on_colab():
-    """Fonction principale pour executer tout le processus"""
-    print("EvaDentalAI + DENTEX sur Google Colab - Version Corrigee")
+    """Fonction principale pour exécuter tout le processus"""
+    print("🚀 EvaDentalAI + DENTEX sur Google Colab - Version Corrigée")
     print("=" * 60)
 
     # 1. Corriger l'environnement
     root_dir = fix_colab_environment()
 
-    # 2. Installer les dependances
+    # 2. Installer les dépendances
     device = install_dependencies()
 
-    # 3. Telecharger DENTEX
+    # 3. Télécharger DENTEX
     if not download_dentex_fixed():
-        print("Echec du telechargement")
+        print("❌ Échec du téléchargement")
         return None
 
-    # 4. Entrainer le modele
+    # 4. Entraîner le modèle
     results = train_model_fixed(device)
 
-    # 5. Tester le modele
+    # 5. Tester le modèle
     if results:
         test_model()
 
     # 6. Sauvegarder
     save_to_drive()
 
-    print("\nProcessus termine!")
-    print("Vos modeles sont dans le repertoire 'models/'")
-    print("Et sauvegardes sur Google Drive si disponible")
+    print("\n🎉 Processus terminé!")
+    print("📁 Vos modèles sont dans le répertoire 'models/'")
+    print("☁️  Et sauvegardés sur Google Drive si disponible")
 
     return results
 
