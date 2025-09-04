@@ -280,7 +280,14 @@ def train_model_fixed(device):
                 'name': 'dentex_colab_fixed',
                 'exist_ok': True,
                 'pretrained': True,
-                'verbose': True
+                'verbose': True,
+                'plots': True,
+                'save': True,
+                'val': True,
+                'amp': True,
+                'workers': 2,
+                'seed': 42,
+                'deterministic': False,
             }
 
             print("Debut de l'entrainement...")
@@ -321,7 +328,14 @@ def train_fallback(device):
                 'project': 'models',
                 'name': 'dentex_fallback',
                 'exist_ok': True,
-                'verbose': True
+                'verbose': True,
+                'plots': True,
+                'save': True,
+                'val': True,
+                'amp': True,
+                'workers': 1,
+                'seed': 42,
+                'deterministic': False,
             }
 
             results = model.train(**train_args)
@@ -337,7 +351,7 @@ def train_fallback(device):
         return None
 
 def test_model():
-    """Test du modele entraine"""
+    """Test du modele entraine avec gestion d'erreurs"""
     print("Test du modele...")
 
     try:
@@ -348,17 +362,54 @@ def test_model():
         models_dir = Path("models")
         best_model = None
 
-        for subdir in models_dir.iterdir():
-            if subdir.is_dir():
-                weights_dir = subdir / "weights"
-                if weights_dir.exists():
-                    best_pt = weights_dir / "best.pt"
-                    if best_pt.exists():
-                        best_model = best_pt
-                        break
+        if models_dir.exists():
+            for subdir in models_dir.iterdir():
+                if subdir.is_dir():
+                    weights_dir = subdir / "weights"
+                    if weights_dir.exists():
+                        best_pt = weights_dir / "best.pt"
+                        if best_pt.exists():
+                            best_model = best_pt
+                            break
 
         if not best_model:
             print("Aucun modele trouve dans models/")
+            print("Creation d'un test simple avec yolov8n.pt...")
+
+            # Patch pour le test
+            original_torch_load = torch.load
+            torch.load = lambda *args, **kwargs: original_torch_load(*args, weights_only=False, **kwargs)
+
+            try:
+                model = YOLO('yolov8n.pt')
+                print("Test avec modele pre-entraine yolov8n.pt")
+
+                # Tester sur des images du dataset si disponible
+                test_dir = Path("data/dentex/test/images")
+                if test_dir.exists() and list(test_dir.glob("*.jpg")):
+                    test_images = list(test_dir.glob("*.jpg"))
+                    test_image = str(test_images[0])
+                    print(f"Test sur: {test_image}")
+
+                    results = model(test_image)
+
+                    for r in results:
+                        if r.boxes is not None:
+                            boxes = r.boxes.xyxy.cpu().numpy()
+                            confidences = r.boxes.conf.cpu().numpy()
+                            class_ids = r.boxes.cls.cpu().numpy().astype(int)
+
+                            print(f"Detections trouvees: {len(boxes)}")
+                            for i, (box, conf, class_id) in enumerate(zip(boxes, confidences, class_ids)):
+                                print(f"  {i+1}. Classe {class_id}: {conf:.3f}")
+                        else:
+                            print("Aucune detection trouvee")
+                else:
+                    print("Aucune image de test trouvee")
+
+            finally:
+                torch.load = original_torch_load
+
             return
 
         print(f"Utilisation du modele: {best_model}")
@@ -381,13 +432,6 @@ def test_model():
                     results = model(test_image)
 
                     for r in results:
-                        im_array = r.plot()
-                        plt.figure(figsize=(12, 8))
-                        plt.imshow(im_array)
-                        plt.axis('off')
-                        plt.title('Detections DENTEX')
-                        plt.show()
-
                         if r.boxes is not None:
                             boxes = r.boxes.xyxy.cpu().numpy()
                             confidences = r.boxes.conf.cpu().numpy()
@@ -407,6 +451,7 @@ def test_model():
 
     except Exception as e:
         print(f"Erreur test: {e}")
+        print("Le test a echoue, mais cela n'affecte pas l'entrainement principal")
 
 def save_to_drive():
     """Sauvegarde sur Google Drive"""
