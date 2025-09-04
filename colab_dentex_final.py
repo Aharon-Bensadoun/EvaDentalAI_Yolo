@@ -117,6 +117,9 @@ def create_realistic_dental_dataset():
 
 def create_dental_xray_image():
     """Crée une image de radiographie dentaire simulée"""
+    from PIL import Image, ImageDraw, ImageFilter
+    import random
+    
     # Taille réaliste d'une radiographie panoramique
     width, height = 800, 400
     
@@ -155,6 +158,8 @@ def create_dental_xray_image():
 
 def create_dental_annotations():
     """Crée des annotations dentaires réalistes"""
+    import random
+    
     annotations = []
     
     # Nombre aléatoire d'objets détectés (0-5)
